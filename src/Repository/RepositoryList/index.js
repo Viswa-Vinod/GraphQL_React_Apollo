@@ -5,14 +5,8 @@ import FetchMore from '../../FetchMore';
 
 import '../style.css';
 
-const updateQuery = (previousResult, {fetchMoreResult}) => {
-  if (!fetchMoreResult) {
-    return previousResult
-  }
-
-  return {
-    ...previousResult,
-    viewer: {
+const getViewerRepos = (previousResult, fetchMoreResult) => {
+  return ({viewer: {
       ...previousResult.viewer,
       repositories: {
         ...previousResult.viewer.repositories,
@@ -21,10 +15,37 @@ const updateQuery = (previousResult, {fetchMoreResult}) => {
           ...previousResult.viewer.repositories.edges,
           ...fetchMoreResult.viewer.repositories.edges
         ]
-      }
-    }
+      }}
+})}
+
+const getRepos = (previousResult, fetchMoreResult) => {
+ 
+  return {
+    organization: {
+          ...previousResult.organization,
+      repositories: {
+            ...previousResult.organization.repositories,
+            ...fetchMoreResult.organization.repositories,
+            edges: [
+              ...previousResult.organization.repositories.edges,
+              ...fetchMoreResult.organization.repositories.edges
+            ]
+          }
+        }
   }
 }
+const updateQuery = (previousResult, {fetchMoreResult}) => {
+  if (!fetchMoreResult) {
+    return previousResult
+  }
+
+  return {
+    ...previousResult,
+     ...previousResult.viewer ? getViewerRepos(previousResult, fetchMoreResult): getRepos(previousResult, fetchMoreResult)
+    
+    }
+  }
+
 const RepositoryList = ({ repositories, loading, fetchMore }) =>(
   <Fragment>
     {repositories.edges.map(({ node }) => (
