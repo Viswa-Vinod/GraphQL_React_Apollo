@@ -40,14 +40,19 @@ const WATCH_REPO = gql`
   }
 `;
 
-const updateAddStar = (client, { data: { addStar: { starrable: { id } } } }) =>{
+const updateAddStar = (client, { data: { addStar: { starrable: { id, viewerHasStarred } } } }) =>{
+  //{ data: { addStar: { starrable: { id, viewerHasStarred } } } }
+  //console.log(mutationResult);
+  //const {id, viewerHasStarred} = mutationResult.data.addStar.starrable;
 
    const repository = client.readFragment({
     id: `Repository:${id}`,
     fragment: REPOSITORY_FRAGMENT,
   });
 
-  const totalCount = repository.stargazers.totalCount + 1;
+  const {totalCount} = repository.stargazers;
+
+  const newTotalCount = viewerHasStarred ? totalCount + 1: totalCount-1;
 
   client.writeFragment({
     id: `Repository:${id}`,
@@ -56,20 +61,22 @@ const updateAddStar = (client, { data: { addStar: { starrable: { id } } } }) =>{
       ...repository,
       stargazers: {
         ...repository.stargazers,
-        totalCount,
+        totalCount: newTotalCount
       },
     },
   });
 
 }
 
-const updateRemoveStar = (client, {data: {removeStar: {starrable: {id}}}}) => {
+const updateRemoveStar = (client, {data: {removeStar: {starrable: {id, viewerHasStarred}}}}) => {
   const repository = client.readFragment({
     id:`Repository:${id}`,
     fragment: REPOSITORY_FRAGMENT
   });
 
-  const totalCount = repository.stargazers.totalCount - 1;
+  const {totalCount} = repository.stargazers;
+
+  const newTotalCount = viewerHasStarred ? totalCount + 1: totalCount-1;
 
   client.writeFragment({
     id: `Repository:${id}`,
@@ -78,7 +85,7 @@ const updateRemoveStar = (client, {data: {removeStar: {starrable: {id}}}}) => {
       ...repository,
       stargazers: {
         ...repository.stargazers,
-        totalCount,
+        totalCount: newTotalCount,
       },
     },
   });
@@ -126,14 +133,44 @@ const RepositoryItem = ({
       <div>
         { !viewerHasStarred ? (
 
-        <Mutation mutation={STAR_REPOSITORY} variables={{id}} update={updateAddStar}>
+        <Mutation 
+            mutation={STAR_REPOSITORY} 
+            variables={{id}} 
+            optimisticResponse={{
+              addStar: {
+                __typename: 'Mutation',
+                starrable: {
+                  __typename: 'Repository',
+                  id,
+                  viewerHasStarred: !viewerHasStarred,
+                },
+              },
+            }}
+            update={updateAddStar}
+            
+            >
         {(addStar, {data, loading, error}) => (
 
         <Button className={'RepositoryItem-title-action'} onClick={addStar}>{stargazers.totalCount} Stars</Button>
         )}
         </Mutation>
         ): (
-          <span>{(<Mutation mutation={UNSTAR_REPOSITORY} variables={{id}} update={updateRemoveStar}>
+          <span>{(<Mutation 
+                    mutation={UNSTAR_REPOSITORY} 
+                    variables={{id}} 
+                    optimisticResponse={{
+              removeStar: {
+                __typename: 'Mutation',
+                starrable: {
+                  __typename: 'Repository',
+                  id,
+                  viewerHasStarred: !viewerHasStarred,
+                },
+              },
+            }}
+                    update={updateRemoveStar}
+                  
+                    >
             {(removeStar, {data, loading, error}) => (
             <Button className='RepositoryItem-title-action' onClick={removeStar}>
               UnStar
@@ -145,7 +182,8 @@ const RepositoryItem = ({
             <Mutation 
                 mutation={WATCH_REPO} 
                 variables={{id, state: viewerSubscription==='SUBSCRIBED' ? 'UNSUBSCRIBED': 'SUBSCRIBED'}}
-                update = {updateWatchRepo}
+                update={updateWatchRepo}
+               
                 >
               {(updateSubscription, {data, loading, error})  => {
                 
