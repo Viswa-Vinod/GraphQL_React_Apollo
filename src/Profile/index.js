@@ -41,7 +41,7 @@ const Profile = () =>
                 
                 return (
 
-               <RepositoryList repositories={viewer.repositories} fetchMore={fetchMore} loading={loading}/>
+               <RepositoryList repositories={viewer.repositories} fetchMore={fetchMore} loading={loading} entry='viewer'/>
                 )   
             }}
        </Query>
